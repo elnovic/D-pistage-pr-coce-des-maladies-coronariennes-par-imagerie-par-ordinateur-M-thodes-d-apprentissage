@@ -5,3 +5,4 @@ numpy==2.2.3
 pandas==2.2.3
 python-multipart==0.0.20
 joblib==1.4.2
+mangum==0.17.0
