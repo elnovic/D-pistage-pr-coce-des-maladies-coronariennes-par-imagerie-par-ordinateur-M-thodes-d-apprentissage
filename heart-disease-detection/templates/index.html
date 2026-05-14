@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dépistage Maladie Coronarienne | IA Médicale</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="background-animation">
+        <div class="heartbeat"></div>
+    </div>
+    
+    <div class="container">
+        <header>
+            <div class="logo">
+                <span class="heart-icon">❤️</span>
+                <h1>Cardio<span>Detect</span></h1>
+            </div>
+            <p class="tagline">Dépistage précoce des maladies coronariennes par intelligence artificielle</p>
+            <div class="badge">
+                <span>🔬 Modèle Random Forest • Accuracy 92.9%</span>
+            </div>
+        </header>
+
+        <div class="main-grid">
+            <!-- Formulaire -->
+            <div class="form-card">
+                <h2>📋 Informations cliniques</h2>
+                <form id="predictionForm">
+                    <div class="form-group">
+                        <label>Âge (années)</label>
+                        <input type="number" id="age" required placeholder="Ex: 54">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Sexe</label>
+                        <select id="sex">
+                            <option value="1">Homme</option>
+                            <option value="0">Femme</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Type de douleur thoracique</label>
+                        <select id="chestPain">
+                            <option value="1">Angine typique</option>
+                            <option value="2">Angine atypique</option>
+                            <option value="3">Douleur non angineuse</option>
+                            <option value="4">Asymptomatique</option>
+                        </select>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Pression artérielle (mm Hg)</label>
+                            <input type="number" id="restingBp" required placeholder="Ex: 130">
+                        </div>
+                        <div class="form-group">
+                            <label>Cholestérol (mg/dl)</label>
+                            <input type="number" id="cholesterol" required placeholder="Ex: 240">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Glycémie à jeun > 120 mg/dl</label>
+                        <select id="fbs">
+                            <option value="0">Non</option>
+                            <option value="1">Oui</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Résultat ECG au repos</label>
+                        <select id="restingEcg">
+                            <option value="0">Normal</option>
+                            <option value="1">Anomalie ST-T</option>
+                            <option value="2">Hypertrophie ventriculaire gauche</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Fréquence cardiaque maximale</label>
+                        <input type="number" id="maxHeartRate" required placeholder="Ex: 150">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Angine d'effort</label>
+                        <select id="exerciseAngina">
+                            <option value="0">Non</option>
+                            <option value="1">Oui</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Dépression du segment ST (oldpeak)</label>
+                        <input type="number" step="0.1" id="oldpeak" required placeholder="Ex: 1.0">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Pente du segment ST</label>
+                        <select id="stSlope">
+                            <option value="1">Montante</option>
+                            <option value="2">Plate</option>
+                            <option value="3">Descendante</option>
+                        </select>
+                    </div>
+
+                    <button type="submit" class="btn-diagnostic">
+                        <span>🔍</span> Diagnostiquer
+                    </button>
+                </form>
+            </div>
+
+            <!-- Résultats -->
+            <div class="results-card" id="resultsCard" style="display: none;">
+                <h2>📊 Résultat du diagnostic</h2>
+                <div class="result-status" id="resultStatus"></div>
+                <div class="probability-container">
+                    <div class="probability-item">
+                        <span class="prob-label">Probabilité maladie</span>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="diseaseProbFill"></div>
+                        </div>
+                        <span class="prob-value" id="diseaseProb">0%</span>
+                    </div>
+                    <div class="probability-item">
+                        <span class="prob-label">Probabilité normal</span>
+                        <div class="progress-bar">
+                            <div class="progress-fill healthy" id="normalProbFill"></div>
+                        </div>
+                        <span class="prob-value" id="normalProb">0%</span>
+                    </div>
+                </div>
+                <div class="risk-badge" id="riskBadge"></div>
+                <div class="recommendation" id="recommendation"></div>
+                <canvas id="riskChart" width="200" height="200"></canvas>
+            </div>
+        </div>
+
+        <footer>
+            <p>🔬 Modèle Random Forest entraîné sur 1190 patients • 11 variables cliniques • Accuracy 92.9%</p>
+            <p>⚠️ À titre informatif uniquement - Consultation médicale recommandée</p>
+        </footer>
+    </div>
+
+    <script>
+        const form = document.getElementById('predictionForm');
+        const resultsCard = document.getElementById('resultsCard');
+        let riskChart = null;
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const data = {
+                age: parseFloat(document.getElementById('age').value),
+                sex: parseInt(document.getElementById('sex').value),
+                chest_pain_type: parseInt(document.getElementById('chestPain').value),
+                resting_bp: parseFloat(document.getElementById('restingBp').value),
+                cholesterol: parseFloat(document.getElementById('cholesterol').value),
+                fasting_blood_sugar: parseInt(document.getElementById('fbs').value),
+                resting_ecg: parseInt(document.getElementById('restingEcg').value),
+                max_heart_rate: parseFloat(document.getElementById('maxHeartRate').value),
+                exercise_angina: parseInt(document.getElementById('exerciseAngina').value),
+                oldpeak: parseFloat(document.getElementById('oldpeak').value),
+                st_slope: parseInt(document.getElementById('stSlope').value)
+            };
+
+            // Animation de chargement
+            const btn = document.querySelector('.btn-diagnostic');
+            btn.innerHTML = '<div class="loader"></div> Analyse en cours...';
+            btn.disabled = true;
+
+            try {
+                const response = await fetch('/api/predict', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+                
+                // Affichage des résultats
+                resultsCard.style.display = 'block';
+                
+                // Mise à jour des probabilités
+                const diseaseProb = (result.probability_disease * 100).toFixed(1);
+                const normalProb = (result.probability_normal * 100).toFixed(1);
+                
+                document.getElementById('diseaseProbFill').style.width = diseaseProb + '%';
+                document.getElementById('normalProbFill').style.width = normalProb + '%';
+                document.getElementById('diseaseProb').textContent = diseaseProb + '%';
+                document.getElementById('normalProb').textContent = normalProb + '%';
+                
+                // Statut et recommandation
+                const resultStatus = document.getElementById('resultStatus');
+                const riskBadge = document.getElementById('riskBadge');
+                const recommendation = document.getElementById('recommendation');
+                
+                if (result.prediction === 1) {
+                    resultStatus.innerHTML = '<div class="status-icon">⚠️</div><div class="status-text high-risk">Risque Élevé de Maladie Coronarienne</div>';
+                    riskBadge.innerHTML = '<div class="badge-risk high">⚠️ Risque Élevé</div>';
+                    recommendation.innerHTML = '<strong>Recommandation :</strong> Consultez un cardiologue rapidement pour une évaluation complète.';
+                } else {
+                    resultStatus.innerHTML = '<div class="status-icon">✅</div><div class="status-text low-risk">Risque Faible de Maladie Coronarienne</div>';
+                    riskBadge.innerHTML = '<div class="badge-risk low">✅ Risque Faible</div>';
+                    recommendation.innerHTML = '<strong>Recommandation :</strong> Continuez à maintenir un mode de vie sain et faites des bilans réguliers.';
+                }
+                
+                // Mise à jour du graphique
+                if (riskChart) {
+                    riskChart.destroy();
+                }
+                
+                const ctx = document.getElementById('riskChart').getContext('2d');
+                riskChart = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Maladie', 'Normal'],
+                        datasets: [{
+                            data: [result.probability_disease, result.probability_normal],
+                            backgroundColor: ['#dc2626', '#10b981'],
+                            borderWidth: 0
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        plugins: {
+                            legend: {
+                                position: 'bottom'
+                            }
+                        }
+                    }
+                });
+                
+                // Scroll vers les résultats
+                resultsCard.scrollIntoView({ behavior: 'smooth' });
+                
+            } catch (error) {
+                alert('Erreur lors de l\'analyse. Veuillez réessayer.');
+            } finally {
+                btn.innerHTML = '<span>🔍</span> Diagnostiquer';
+                btn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
